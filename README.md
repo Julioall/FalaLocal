@@ -1,4 +1,4 @@
-# Kokoro pt_BR Desktop Local
+# Vocalis
 
 Aplicativo desktop local para transformar texto em voz em portugues do Brasil usando Kokoro.
 
@@ -69,7 +69,7 @@ Se o script nao tiver permissao de execucao:
 chmod +x scripts/bootstrap.sh scripts/run.sh
 ```
 
-## Usar a app
+## Usar o Vocalis
 
 1. Digite o texto em portugues do Brasil.
 2. Escolha a voz: `pf_dora`, `pm_alex` ou `pm_santa`.
