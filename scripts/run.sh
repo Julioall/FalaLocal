@@ -9,4 +9,4 @@ if [ ! -x ".venv/bin/python" ]; then
   exit 1
 fi
 
-exec "$ROOT_DIR/.venv/bin/python" -m piper_ptbr_desktop
+exec "$ROOT_DIR/.venv/bin/python" -m kokoro_ptbr_desktop

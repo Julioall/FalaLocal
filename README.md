@@ -1,13 +1,10 @@
-# TTS pt_BR Desktop Local
+# Kokoro pt_BR Desktop Local
 
-Aplicativo desktop local para transformar texto em voz em portugues do Brasil, com dois motores:
+Aplicativo desktop local para transformar texto em voz em portugues do Brasil usando Kokoro.
 
-- **Kokoro-82M**: modo padrao, melhor qualidade, vozes pt_BR selecionaveis.
-- **Piper pt_BR**: fallback rapido e leve em ONNX.
+Depois que o modelo fica no cache local, a geracao roda sem ElevenLabs ou API externa.
 
-Depois que os modelos ficam no cache local, a geracao roda sem ElevenLabs ou API externa.
-
-## Modelo padrao
+## Modelo
 
 - Modelo: `hexgrad/Kokoro-82M`
 - Idioma: Brazilian Portuguese, `lang_code='p'`
@@ -20,25 +17,13 @@ Fontes:
 - https://huggingface.co/hexgrad/Kokoro-82M
 - https://huggingface.co/hexgrad/Kokoro-82M/blob/main/VOICES.md
 
-## Fallback Piper
-
-- Modelo: `Trelis/piper-pt-br-faber-medium`
-- Idioma: Portuguese (Brazil), `pt_BR`
-- Voz: masculina, `pt_BR-faber-medium`
-- Formato: ONNX
-- Tamanho: ~63 MB
-- Sample rate: 22050 Hz
-- Licenca do modelo: CC0/Public Domain conforme model card
-
-Fonte: https://huggingface.co/Trelis/piper-pt-br-faber-medium
-
 ## Requisitos
 
 - Python 3.10+
 - `uv` para preparar o ambiente Python
 - `espeak-ng` instalado e disponivel no PATH, ou informado na interface
 
-O Kokoro usa o pacote `kokoro` com `KPipeline(lang_code='p')`. O Piper usa o caminho standalone ONNX do model card com `onnxruntime`, `huggingface_hub`, `soundfile` e `espeak-ng`.
+O app usa o pacote `kokoro` com `KPipeline(lang_code='p')`.
 
 ## Instalar no Windows
 
@@ -87,32 +72,23 @@ chmod +x scripts/bootstrap.sh scripts/run.sh
 ## Usar a app
 
 1. Digite o texto em portugues do Brasil.
-2. Escolha o motor: `Kokoro - melhor qualidade` ou `Piper - rapido e leve`.
-3. No Kokoro, escolha a voz: `pf_dora`, `pm_alex` ou `pm_santa`.
-4. Confira se `Executavel espeak-ng` aponta para `espeak-ng`.
-5. Ajuste velocidade, variacao e pausa entre frases se necessario.
-6. Clique em `Gerar WAV`.
+2. Escolha a voz: `pf_dora`, `pm_alex` ou `pm_santa`.
+3. Confira se `Executavel espeak-ng` aponta para `espeak-ng`.
+4. Ajuste velocidade e pausa entre frases se necessario.
+5. Clique em `Gerar WAV`.
 
 Os arquivos sao salvos em `outputs/` por padrao.
 
-## Configuracao por variaveis de ambiente
-
-Para trocar o modelo Piper:
-
-```bash
-export PIPER_TTS_MODEL=Trelis/piper-pt-br-faber-medium
-```
+## Configuracao por variavel de ambiente
 
 Para apontar para um `espeak-ng` fora do PATH:
 
 ```bash
-export PIPER_ESPEAK=/caminho/para/espeak-ng
+export TTS_ESPEAK=/caminho/para/espeak-ng
 ```
 
 ## Observacoes para producao interna
 
-- Kokoro e o modo recomendado para qualidade em pt_BR.
-- Piper continua util quando a prioridade for simplicidade e previsibilidade.
-- Nenhum dos dois fluxos faz clonagem de voz.
-- A primeira execucao precisa de internet para baixar os modelos; depois o cache local e reutilizado.
-
+- Kokoro e o modo unico da app nesta versao.
+- Este fluxo nao faz clonagem de voz.
+- A primeira execucao precisa de internet para baixar o modelo; depois o cache local e reutilizado.

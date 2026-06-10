@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from pathlib import Path
-import os
 import subprocess
 import sys
 import traceback
@@ -34,15 +33,12 @@ from PySide6.QtWidgets import (
 
 from .engine import (
     DEFAULT_ESPEAK_COMMAND,
-    DEFAULT_ENGINE,
     DEFAULT_KOKORO_VOICE,
     DEFAULT_MAX_CHUNK_CHARS,
-    DEFAULT_MODEL_SOURCE,
-    ENGINE_KOKORO,
-    ENGINE_PIPER,
     GenerationOptions,
+    KOKORO_REPO_ID,
     KOKORO_VOICES,
-    LocalTTSEngine,
+    KokoroTTSEngine,
     find_espeak_command,
 )
 
@@ -52,7 +48,7 @@ class GenerationWorker(QObject):
     finished = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, engine: LocalTTSEngine, options: GenerationOptions) -> None:
+    def __init__(self, engine: KokoroTTSEngine, options: GenerationOptions) -> None:
         super().__init__()
         self._engine = engine
         self._options = options
@@ -70,17 +66,16 @@ class GenerationWorker(QObject):
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("TTS pt_BR Desktop Local")
-        self.resize(1120, 720)
+        self.setWindowTitle("Kokoro pt_BR Desktop Local")
+        self.resize(1080, 700)
 
-        self._engine = LocalTTSEngine()
+        self._engine = KokoroTTSEngine()
         self._thread: QThread | None = None
         self._worker: GenerationWorker | None = None
         self._last_output: Path | None = None
 
         self._build_ui()
         self._connect_signals()
-        self._update_engine_ui()
         self._update_char_count()
 
     def closeEvent(self, event: QCloseEvent) -> None:
@@ -102,9 +97,9 @@ class MainWindow(QMainWindow):
 
         header = QHBoxLayout()
         title_block = QVBoxLayout()
-        title = QLabel("TTS pt_BR Desktop Local")
+        title = QLabel("Kokoro pt_BR Desktop Local")
         title.setObjectName("Title")
-        subtitle = QLabel("Kokoro para melhor voz, Piper como fallback leve")
+        subtitle = QLabel("Texto em voz local com vozes brasileiras do Kokoro")
         subtitle.setObjectName("Subtitle")
         title_block.addWidget(title)
         title_block.addWidget(subtitle)
@@ -116,8 +111,8 @@ class MainWindow(QMainWindow):
         root_layout.addLayout(header)
 
         warning = QLabel(
-            "Kokoro e Piper rodam localmente. Kokoro usa vozes pt_BR de maior qualidade; "
-            "Piper segue disponivel como fallback rapido. Ambos requerem espeak-ng."
+            f"Modelo: {KOKORO_REPO_ID}. A primeira execucao baixa os pesos do Kokoro. "
+            "A fonemizacao pt_BR requer espeak-ng instalado no sistema."
         )
         warning.setObjectName("WarningBanner")
         warning.setWordWrap(True)
@@ -161,7 +156,7 @@ class MainWindow(QMainWindow):
         self.log_view = QPlainTextEdit()
         self.log_view.setReadOnly(True)
         self.log_view.setMaximumBlockCount(500)
-        self.log_view.setPlaceholderText("Os eventos de download, fonemizacao e geracao aparecem aqui.")
+        self.log_view.setPlaceholderText("Os eventos de download, carga do modelo e geracao aparecem aqui.")
         log_layout.addWidget(self.log_view)
         root_layout.addWidget(log_group, 0)
 
@@ -203,25 +198,14 @@ class MainWindow(QMainWindow):
         runtime_form = QFormLayout(runtime_group)
         runtime_form.setFieldGrowthPolicy(QFormLayout.AllNonFixedFieldsGrow)
 
-        self.engine_combo = QComboBox()
-        self.engine_combo.addItem("Kokoro - melhor qualidade", ENGINE_KOKORO)
-        self.engine_combo.addItem("Piper - rapido e leve", ENGINE_PIPER)
-        runtime_form.addRow("Motor", self.engine_combo)
-
         self.kokoro_voice_combo = QComboBox()
         for voice_id, label in KOKORO_VOICES.items():
             self.kokoro_voice_combo.addItem(f"{voice_id} - {label}", voice_id)
         self.kokoro_voice_combo.setCurrentIndex(max(0, self.kokoro_voice_combo.findData(DEFAULT_KOKORO_VOICE)))
         runtime_form.addRow("Voz Kokoro", self.kokoro_voice_combo)
 
-        self.model_source_edit = QLineEdit(os.environ.get("PIPER_TTS_MODEL", DEFAULT_MODEL_SOURCE))
-        runtime_form.addRow("Modelo Piper", self.model_source_edit)
-
         self.espeak_command_edit = QLineEdit(find_espeak_command() or DEFAULT_ESPEAK_COMMAND)
         runtime_form.addRow("Executavel espeak-ng", self._path_row(self.espeak_command_edit, self._browse_espeak))
-
-        self.espeak_voice_edit = QLineEdit("pt-br")
-        runtime_form.addRow("Voz espeak", self.espeak_voice_edit)
 
         layout.addWidget(runtime_group)
 
@@ -234,18 +218,6 @@ class MainWindow(QMainWindow):
         self.speed_spin.setSingleStep(0.05)
         self.speed_spin.setValue(1.0)
         generation_form.addRow("Velocidade", self.speed_spin)
-
-        self.noise_scale_spin = QDoubleSpinBox()
-        self.noise_scale_spin.setRange(0.0, 1.5)
-        self.noise_scale_spin.setSingleStep(0.01)
-        self.noise_scale_spin.setValue(0.667)
-        generation_form.addRow("Variacao", self.noise_scale_spin)
-
-        self.noise_w_spin = QDoubleSpinBox()
-        self.noise_w_spin.setRange(0.0, 1.5)
-        self.noise_w_spin.setSingleStep(0.01)
-        self.noise_w_spin.setValue(0.8)
-        generation_form.addRow("Duracao variavel", self.noise_w_spin)
 
         self.silence_spin = QSpinBox()
         self.silence_spin.setRange(0, 2000)
@@ -295,7 +267,6 @@ class MainWindow(QMainWindow):
 
     def _connect_signals(self) -> None:
         self.text_edit.textChanged.connect(self._update_char_count)
-        self.engine_combo.currentIndexChanged.connect(self._update_engine_ui)
         self.generate_button.clicked.connect(self._start_generation)
         self.open_file_button.clicked.connect(self._open_last_file)
         self.open_folder_button.clicked.connect(self._open_last_folder)
@@ -327,7 +298,7 @@ class MainWindow(QMainWindow):
             return
 
         self._set_running(True)
-        self._append_log(f"Iniciando geracao local com {options.engine}...")
+        self._append_log("Iniciando geracao local com Kokoro...")
 
         self._thread = QThread()
         self._worker = GenerationWorker(self._engine, options)
@@ -350,25 +321,16 @@ class MainWindow(QMainWindow):
             raise ValueError("Informe um texto para gerar audio.")
 
         output_dir = Path(self.output_dir_edit.text().strip() or "outputs").expanduser()
-        file_name = self.file_name_edit.text().strip() or self._default_output_name()
+        file_name = self.file_name_edit.text().strip() or "kokoro_ptbr_output.wav"
         if not file_name.lower().endswith(".wav"):
             file_name = f"{file_name}.wav"
-
-        engine = self.engine_combo.currentData() or DEFAULT_ENGINE
-        speed = self.speed_spin.value()
 
         return GenerationOptions(
             text=text,
             output_path=output_dir / file_name,
-            engine=engine,
-            model_source=self.model_source_edit.text().strip() or DEFAULT_MODEL_SOURCE,
             espeak_command=self.espeak_command_edit.text().strip() or DEFAULT_ESPEAK_COMMAND,
-            espeak_voice=self.espeak_voice_edit.text().strip() or "pt-br",
             kokoro_voice=self.kokoro_voice_combo.currentData() or DEFAULT_KOKORO_VOICE,
-            kokoro_speed=speed,
-            noise_scale=self.noise_scale_spin.value(),
-            length_scale=(1 / speed) if engine == ENGINE_PIPER else speed,
-            noise_w=self.noise_w_spin.value(),
+            kokoro_speed=self.speed_spin.value(),
             chunk_long_text=self.chunk_checkbox.isChecked(),
             max_chunk_chars=self.chunk_chars_spin.value(),
             silence_ms=self.silence_spin.value(),
@@ -379,7 +341,7 @@ class MainWindow(QMainWindow):
         self._last_output = result.output_path
         self._append_log(
             f"Concluido: {result.output_path} | {result.sample_rate} Hz | "
-            f"{result.chunk_count} trecho(s) | {result.engine} | voz {result.voice_label}"
+            f"{result.chunk_count} trecho(s) | voz {result.voice_label}"
         )
         self.status_label.setText("Concluido")
         self.open_file_button.setEnabled(True)
@@ -418,24 +380,6 @@ class MainWindow(QMainWindow):
     def _update_char_count(self) -> None:
         count = len(self.text_edit.toPlainText())
         self.char_count_label.setText(f"{count} caracteres")
-
-    def _update_engine_ui(self) -> None:
-        is_kokoro = (self.engine_combo.currentData() or DEFAULT_ENGINE) == ENGINE_KOKORO
-        self.kokoro_voice_combo.setEnabled(is_kokoro)
-        self.model_source_edit.setEnabled(not is_kokoro)
-        self.espeak_voice_edit.setEnabled(not is_kokoro)
-        self.noise_scale_spin.setEnabled(not is_kokoro)
-        self.noise_w_spin.setEnabled(not is_kokoro)
-        if not self.file_name_edit.text().strip() or self.file_name_edit.text().strip() in {
-            "piper_ptbr_output.wav",
-            "kokoro_ptbr_output.wav",
-        }:
-            self.file_name_edit.setText(self._default_output_name())
-
-    def _default_output_name(self) -> str:
-        if (self.engine_combo.currentData() or DEFAULT_ENGINE) == ENGINE_KOKORO:
-            return "kokoro_ptbr_output.wav"
-        return "piper_ptbr_output.wav"
 
     def _open_last_file(self) -> None:
         if self._last_output:
@@ -552,7 +496,7 @@ QProgressBar::chunk {
 
 def main() -> int:
     app = QApplication(sys.argv)
-    app.setApplicationName("TTS pt_BR Desktop Local")
+    app.setApplicationName("Kokoro pt_BR Desktop Local")
     window = MainWindow()
     window.show()
     return app.exec()

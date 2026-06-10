@@ -3,23 +3,21 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "tts-ptbr-desktop"
+name = "kokoro-ptbr-desktop"
 version = "0.1.0"
-description = "Desktop app for local Brazilian Portuguese Kokoro/Piper TTS generation."
+description = "Desktop app for local Brazilian Portuguese Kokoro TTS generation."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "click>=8.1,<9",
-    "huggingface_hub>=0.28,<1.0",
     "kokoro>=0.9.4,<1",
     "numpy>=1.26,<3",
-    "onnxruntime>=1.17,<2",
     "PySide6>=6.7,<6.10",
     "soundfile>=0.12,<1",
 ]
 
 [project.scripts]
-tts-ptbr-desktop = "piper_ptbr_desktop.app:main"
+kokoro-ptbr-desktop = "kokoro_ptbr_desktop.app:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

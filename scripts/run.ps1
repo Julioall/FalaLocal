@@ -8,7 +8,7 @@ if (-not (Test-Path $PythonBin)) {
     throw "Ambiente nao encontrado. Execute .\scripts\bootstrap.ps1 primeiro."
 }
 
-if (-not $env:PIPER_ESPEAK) {
+if (-not $env:TTS_ESPEAK) {
     $Candidates = @()
     if ($env:ProgramFiles) {
         $Candidates += Join-Path $env:ProgramFiles "eSpeak NG\espeak-ng.exe"
@@ -23,10 +23,10 @@ if (-not $env:PIPER_ESPEAK) {
     foreach ($Candidate in $Candidates) {
         $Match = Get-Item $Candidate -ErrorAction SilentlyContinue | Select-Object -First 1
         if ($Match) {
-            $env:PIPER_ESPEAK = $Match.FullName
+            $env:TTS_ESPEAK = $Match.FullName
             break
         }
     }
 }
 
-& $PythonBin -m piper_ptbr_desktop
+& $PythonBin -m kokoro_ptbr_desktop
